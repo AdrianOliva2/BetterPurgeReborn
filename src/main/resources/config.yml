@@ -14,3 +14,5 @@ enabled_days:
   friday: true
   saturday: true
   sunday: true
+blacklisted_worlds:
+  - "Spawn"

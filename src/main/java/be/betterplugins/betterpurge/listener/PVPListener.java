@@ -42,6 +42,12 @@ public class PVPListener implements Listener
         boolean isCQBAttackedByPlayer = attacker.getType() == EntityType.PLAYER;
         boolean isRangeAttackedByPlayer = attacker instanceof Projectile && ((Projectile) attacker).getShooter() instanceof Player;
         boolean isPlayerAttacking = isCQBAttackedByPlayer || isRangeAttackedByPlayer;
+        boolean isInBlackListedWorld = purgeConfig.isWorldBlacklisted(attacker.getWorld().getName());
+
+        if (isInBlackListedWorld)
+        {
+            return;
+        }
 
         // Ignore any attacks where one or more of the parties is not a player
         if (!isPlayerAttacked || !isPlayerAttacking)

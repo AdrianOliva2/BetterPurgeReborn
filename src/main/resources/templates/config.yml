@@ -63,3 +63,5 @@ handle_pvp: {enable_pvp}
 # When true:
 #     - PVP is allowed everywhere, this includes spawn areas
 overwrite_safezone: {overwrite_safezone}
+
+blacklisted_worlds: {blacklisted_worlds}

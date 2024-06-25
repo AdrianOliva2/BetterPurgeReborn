@@ -20,6 +20,7 @@ public class PurgeConfiguration {
     private final boolean handleContainers;
     private final boolean overwriteSafezonePvp;
     private final boolean handlePVP;
+    private final Set<String> blacklistedWorlds;
 
     /**
      * Wrapper around our config file. This allows easy input validation in one place
@@ -55,6 +56,14 @@ public class PurgeConfiguration {
             this.enabledDays.addAll(Arrays.asList(DayOfWeek.values()));
         }
         logger.log(Level.CONFIG, "Enabled days: " + enabledDays.size());
+
+        this.blacklistedWorlds = new HashSet<>();
+        ConfigurationSection worldsSection = config.getConfigurationSection("blacklisted_worlds");
+        if (worldsSection != null)
+        {
+            this.blacklistedWorlds.addAll(worldsSection.getKeys(false));
+        }
+        logger.log(Level.CONFIG, "Blacklisted worlds: " + blacklistedWorlds.size());
 
         // Handle input & perform validation/correction
         this.startTime = startTime != null ? new PurgeTime( startTime ) : new PurgeTime(21, 0);
@@ -103,4 +112,6 @@ public class PurgeConfiguration {
     {
         return numStopWarnings;
     }
+
+    public boolean isWorldBlacklisted(String worldName) { return blacklistedWorlds.contains(worldName); }
 }
