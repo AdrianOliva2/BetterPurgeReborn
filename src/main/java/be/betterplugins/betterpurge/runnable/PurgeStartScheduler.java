@@ -1,14 +1,14 @@
 package be.betterplugins.betterpurge.runnable;
 
-import be.betterplugins.betterpurge.listener.ContainerListener;
+import be.betterplugins.betterpurge.BetterPurge;
 import be.betterplugins.betterpurge.messenger.BPLogger;
 import be.betterplugins.betterpurge.messenger.Messenger;
 import be.betterplugins.betterpurge.messenger.MsgEntry;
 import be.betterplugins.betterpurge.model.*;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
@@ -31,6 +31,7 @@ public class PurgeStartScheduler extends BukkitRunnable
     private final PurgeConfiguration purgeConfig;
     private final Messenger messenger;
     private final BPLogger logger;
+    private final BetterPurge plugin;
 
     /**
      * @param config gives the configuration file as parameter
@@ -41,6 +42,7 @@ public class PurgeStartScheduler extends BukkitRunnable
         this.messenger = messenger;
         this.purgeHandler = purgeHandler;
         this.logger = logger;
+        this.plugin = BetterPurge.getInstance();
     }
 
     /**
@@ -49,6 +51,14 @@ public class PurgeStartScheduler extends BukkitRunnable
     @Override
     public void run()
     {
+        if (plugin.hasInitiated()) {
+            BukkitTask startScheduler = plugin.getStartScheduler();
+            if (startScheduler != null) {
+                startScheduler.cancel();
+                plugin.getServer().getScheduler().cancelTask(startScheduler.getTaskId());
+            }
+            return;
+        }
         // Get the current time
         LocalDateTime localDateTime = LocalDateTime.now();
         PurgeTime timeNow = new PurgeTime( localDateTime.toLocalTime() );
@@ -102,6 +112,7 @@ public class PurgeStartScheduler extends BukkitRunnable
                 {
                     logger.log(Level.FINEST,"Enabling purge by time");
                     purgeHandler.startPurge( this.purgeConfig.getDuration() );
+                    plugin.initiate();
                 }
                 else
                 {

@@ -19,7 +19,9 @@ lang: {lang}
 #
 
 # The starting time of the purge, in the format HH:MM
-start: {start}
+start: #{start}
+  from: {start.from}
+  to: {start.to}
 
 # The duration of the purge in minutes. Must lie in the range [2, 1400]
 # Eg. if you want the purge to be active for one hour and 14 minutes: set this to 74

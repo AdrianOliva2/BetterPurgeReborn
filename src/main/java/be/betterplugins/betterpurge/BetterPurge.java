@@ -2,6 +2,7 @@ package be.betterplugins.betterpurge;
 
 import be.betterplugins.betterpurge.listener.ContainerListener;
 import be.betterplugins.betterpurge.listener.PVPListener;
+import be.betterplugins.betterpurge.listener.PlayerListener;
 import be.betterplugins.betterpurge.messenger.BPLogger;
 import be.betterplugins.betterpurge.messenger.Messenger;
 import be.betterplugins.betterpurge.model.PurgeConfiguration;
@@ -12,9 +13,11 @@ import be.dezijwegel.betteryaml.BetterLang;
 import be.dezijwegel.betteryaml.OptionalBetterYaml;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.event.HandlerList;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.util.Optional;
 import java.util.logging.Level;
@@ -28,18 +31,29 @@ import java.util.logging.Level;
 public class BetterPurge extends JavaPlugin
 {
 
+    public static BetterPurge getInstance() {
+        return getPlugin(BetterPurge.class);
+    }
+
     private PurgeStartScheduler purgeStartScheduler;
+    YamlConfiguration config;
+    private NamespacedKey bossBarKey;
+    private PurgeHandler purgeHandler;
+    private Boolean initiated;
+    private BukkitTask startScheduler;
 
     @Override
     public void onEnable()
     {
-
+        initiated = false;
+        bossBarKey = new NamespacedKey(this, "betterpurge_bossbar");
         BPLogger logger = new BPLogger(Level.WARNING);
 
         // Initialise configuration
 
         OptionalBetterYaml betterYaml = new OptionalBetterYaml("config.yml", this, true);
         Optional<YamlConfiguration> optionalConfig = betterYaml.getYamlConfiguration();
+        config = optionalConfig.orElse(null);
 
         // Disable the plugin & prevent further code execution if a config error happens (this should never happen)
         if (!optionalConfig.isPresent())
@@ -49,7 +63,7 @@ public class BetterPurge extends JavaPlugin
             return;
         }
 
-        YamlConfiguration config = optionalConfig.get();
+
         PurgeConfiguration purgeConfig = new PurgeConfiguration(config, logger);
 
         // Initialising localisation
@@ -77,15 +91,18 @@ public class BetterPurge extends JavaPlugin
         PVPListener pvpListener = new PVPListener(purgeStatus, purgeConfig, logger);
         Bukkit.getServer().getPluginManager().registerEvents(pvpListener, this);
 
+        PlayerListener playerListener = new PlayerListener(purgeConfig);
+        Bukkit.getServer().getPluginManager().registerEvents(playerListener, this);
+
         // Initialise purge handler
-        PurgeHandler purgeHandler = new PurgeHandler(purgeStatus, containerListener, purgeConfig, messenger, logger, this);
+        purgeHandler = new PurgeHandler(purgeStatus, containerListener, purgeConfig, messenger, logger, this);
 
         // Initialise runnables
 
         purgeStartScheduler = new PurgeStartScheduler(purgeHandler, purgeConfig, messenger, logger);
 
         // run every mochnute
-        purgeStartScheduler.runTaskTimer(this, 0L, 1200L);
+        startScheduler = purgeStartScheduler.runTaskTimer(this, 0L, 1200L);
 
         // Initialise command handler
         CommandHandler commandHandler = new CommandHandler(messenger, logger, purgeHandler, this);
@@ -94,6 +111,35 @@ public class BetterPurge extends JavaPlugin
         MetricsHandler metricsHandler = new MetricsHandler(this, config);
     }
 
+    public YamlConfiguration getPluginConfig()
+    {
+        return config;
+    }
+
+    public NamespacedKey getBossBarKey()
+    {
+        return bossBarKey;
+    }
+
+    public PurgeHandler getPurgeHandler()
+    {
+        return purgeHandler;
+    }
+
+    public BukkitTask getStartScheduler()
+    {
+        return startScheduler;
+    }
+
+    public Boolean hasInitiated()
+    {
+        return initiated;
+    }
+
+    public void initiate()
+    {
+        this.initiated = true;
+    }
 
     @Override
     public void onDisable()

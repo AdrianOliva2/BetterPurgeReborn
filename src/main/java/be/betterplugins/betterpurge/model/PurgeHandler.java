@@ -1,17 +1,27 @@
 package be.betterplugins.betterpurge.model;
 
+import be.betterplugins.betterpurge.BetterPurge;
 import be.betterplugins.betterpurge.listener.ContainerListener;
 import be.betterplugins.betterpurge.messenger.BPLogger;
 import be.betterplugins.betterpurge.messenger.Messenger;
 import be.betterplugins.betterpurge.messenger.MsgEntry;
+import be.betterplugins.betterpurge.runnable.BossBarUpdateProgressRunnable;
 import be.betterplugins.betterpurge.runnable.CountdownRunnable;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
+import org.bukkit.World;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitScheduler;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 
 public class PurgeHandler
@@ -20,14 +30,14 @@ public class PurgeHandler
     private final PurgeStatus purgeStatus;
     private final ContainerListener containerListener;
     private final PurgeConfiguration purgeConfig;
-    private final JavaPlugin plugin;
+    private final BetterPurge plugin;
     private final Messenger messenger;
     private final BPLogger logger;
 
     private CountdownRunnable startCounter;
     private CountdownRunnable stopCounter;
 
-    public PurgeHandler(PurgeStatus purgeStatus, ContainerListener containerListener, PurgeConfiguration purgeConfig, Messenger messenger, BPLogger logger, JavaPlugin plugin)
+    public PurgeHandler(PurgeStatus purgeStatus, ContainerListener containerListener, PurgeConfiguration purgeConfig, Messenger messenger, BPLogger logger, BetterPurge plugin)
     {
         this.purgeStatus = purgeStatus;
         this.containerListener = containerListener;
@@ -78,7 +88,7 @@ public class PurgeHandler
                             "seconds_countdown",
                             new MsgEntry("<duration>", count)
                     );
-                    if (!message.equals(""))
+                    if (!message.isEmpty())
                         for (Player player : Bukkit.getOnlinePlayers())
                             player.sendTitle("", message, 5, 10, 5);
                 },
@@ -90,7 +100,17 @@ public class PurgeHandler
                             "purge_start",
                             new MsgEntry("<duration>", purgeDuration)
                     );
-                    Bukkit.getOnlinePlayers().forEach(HumanEntity::closeInventory);
+                    BossBar bossBar = plugin.getServer().createBossBar(plugin.getBossBarKey(),ChatColor.translateAlternateColorCodes('&', "&c&lLA PURGA ESTÁ ACTIVA"), BarColor.RED, BarStyle.SOLID);
+                    bossBar.setProgress(1.0);
+                    Bukkit.getOnlinePlayers().forEach(player -> {
+                        player.closeInventory();
+                        if (!purgeConfig.isWorldBlacklisted(player.getWorld().getName()))
+                            bossBar.addPlayer(player);
+                    });
+                    bossBar.setVisible(true);
+                    final int[] seconds = {purgeDuration * 60};
+                    BossBarUpdateProgressRunnable bossBarUpdateProgressRunnable = new BossBarUpdateProgressRunnable(plugin, bossBar, seconds, purgeDuration * 60);
+                    bossBarUpdateProgressRunnable.start();
                     purgeStatus.setState( PurgeState.ACTIVE );
                     this.stopPurge( purgeDuration );
                 }
@@ -119,8 +139,17 @@ public class PurgeHandler
         // Notify all players
         List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
         messenger.sendMessage(players, "purge_ended");
+        BossBar bossBar = plugin.getServer().getBossBar(plugin.getBossBarKey());
+        if (bossBar != null) {
+            bossBar.setVisible(false);
+            bossBar.removeAll();
+        }
+        plugin.getServer().removeBossBar(plugin.getBossBarKey());
         // Update the purge's state
         purgeStatus.setState(PurgeState.DISABLED);
+
+        PurgeConfiguration.refreshStartTime(plugin.getPluginConfig());
+
         return true;
     }
 

@@ -1,5 +1,7 @@
 lang: "en-US"
-start: "21:00"
+start:
+  from: "20:00"
+  to: "23:59"
 duration: 15
 enable_pvp: true
 enable_chests: true
